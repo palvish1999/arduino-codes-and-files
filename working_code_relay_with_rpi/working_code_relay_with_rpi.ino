@@ -7,15 +7,15 @@ const int raspberry_pi_port = 12345; // Choose a port for the Raspberry Pi serve
 const int esp8266_port = 80; // Choose a port for the ESP8266 server
 const char* raspberry_pi_ip = "192.168.1.181"; // Replace with the Raspberry Pi's IP address
 
-WiFiClient esp8266_client;
-WiFiClient raspberry_pi_server;
-WiFiServer esp8266_server(esp8266_port);
-
 const int relayPin = D1; // GPIO pin connected to relay
+
+WiFiClient esp8266_client;
+WiFiClient raspberry_pi_client;
+WiFiServer esp8266_server(esp8266_port);
 
 void setup() {
   Serial.begin(115200);
-  delay(10);
+  delay(2000);
 
   // Connect to WiFi network
   Serial.println();
@@ -29,40 +29,42 @@ void setup() {
   Serial.println("");
   Serial.println("WiFi connected");
 
-  // Initialize relay pin as output
-  pinMode(relayPin, OUTPUT);
-
-  esp8266_server.begin();
-  Serial.println("ESP8266 Server started");
-
   // Connect to Raspberry Pi server
   Serial.println("Connecting to Raspberry Pi server");
-  if (!raspberry_pi_server.connect(raspberry_pi_ip, esp8266_port)) {
+  if (!raspberry_pi_client.connect(raspberry_pi_ip, raspberry_pi_port)) {
     Serial.println("Connection failed.");
   } else {
     Serial.println("Connected to Raspberry Pi");
   }
+
+  // Start ESP8266 server
+  esp8266_server.begin();
+  Serial.println("ESP8266 Server started");
+
+  // Initialize relay pin as output
+  pinMode(relayPin, OUTPUT);
 }
 
 void loop() {
   // Check for data from Raspberry Pi server
-  if (raspberry_pi_server.available()) {
-    String data = raspberry_pi_server.readStringUntil('\n');
+  if (raspberry_pi_client.available()) {
+    String data = raspberry_pi_client.readStringUntil('\n');
     Serial.println("Received from Raspberry Pi server: " + data);
-
+    // Process the received data here if needed
   }
-    // Control relay based on received command
+
+  // Check for incoming connections from ESP8266 client
   WiFiClient esp_client = esp8266_server.available();
   if (esp_client) {
     while (esp_client.connected()) {
       if (esp_client.available()) {
         String data = esp_client.readStringUntil('\n');
-        Serial.println("Received from raspberrypi server: " + data);
+        Serial.println("Received from ESP8266 client: " + data);
         // Control relay based on received command
-        if (data == "1") {
+        if (data == "ON") {
           digitalWrite(relayPin, HIGH); // Turn relay ON
           Serial.println("Relay turned ON");
-        } else if (data == "0") {
+        } else if (data == "OFF") {
           digitalWrite(relayPin, LOW); // Turn relay OFF
           Serial.println("Relay turned OFF");
         } else {
